@@ -41,3 +41,19 @@ Essa ferramenta capacitará os provedores de internet a tomarem medidas precisas
 
 4. Testes e Simulações Práticas:
 Possibilitar aos usuários a realização de simulações práticas e testes em um ambiente controlado para avaliar e aprimorar suas habilidades na configuração de dispositivos de rede. Retornando assim uma segurança de que o ambiente na qual está sendo manipulado não está em produção. Isso garante ao usuário que não haverá interferencias nos serviços que estão atuando no momento. E quando houver a certeza de que os testes lograram êxito, será possível estar aplicando em ambiente de produção.
+
+## SPRINTS:
+
+O projeto será elaborado em conformidade com as seguintes etapas de desenvolvimento abaixo, denominadas sprint:
+
+SPRINT 1 - Início com a preparação do ambiente e organização da topologia de rede. Esta etapa, que visa atender o primeiro objetivo específico, será realizada por Maxuel.
+
+SPRINT 2 - Configuração inicial dos roteadores (Concentrador e roteador de borda, ambos utilizando a plataforma MikroTik) e servidores (de armazenamento de logs e monitoramento). Nesta fase, realizaremos a configuração das interfaces e endereçamento IP. Quanto aos servidores, alocaremos uma máquina para cada serviço. Esta etapa atende ao segundo objetivo específico e será conduzida por todos os membros da equipe. Matheus desempenhará um papel principal na configuração da maioria dos serviços.
+
+SPRINT 3 - Configuração do roteamento e NAT entre os servidores e roteadores. Todos os membros da equipe participarão, sendo que Frederico assumirá a responsabilidade pela maioria das configurações. Esta etapa também atende ao segundo objetivo específico.
+
+SPRINT 4 - Configuração do tipo de autenticação (PPPoE), perfis, VLAN, pool de IPs, MTU e controle de banda. Ajustes serão realizados no MikroTik, que será o concentrador, e no roteador de borda. Esta etapa, crucial para atender ao segundo objetivo específico, será realizada por Maxuel, com a colaboração de toda a equipe.
+
+SPRINT 5 - Configuração do servidor de autenticação RADIUS, servidor para armazenamento de logs, além do servidor de monitoramento. Também inclui a implementação de rotinas de backup em um serviço de nuvem, possivelmente o Mega, devido ao fornecimento de 25 GB de armazenamento gratuito. Todos os membros da equipe participarão, e Matheus desempenhará um papel central na configuração da maioria dos serviços. Esta etapa visa atender ao segundo objetivo específico.
+
+SPRINT 6 - Configuração do firewall, marcando a conclusão do projeto. Esta etapa atende aos objetivos específicos dois, três e quatro, e todos os componentes da equipe estarão envolvidos.
