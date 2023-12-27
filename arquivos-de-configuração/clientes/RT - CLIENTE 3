@@ -1,0 +1,32 @@
+RT - CLIENTE 3
+/interface ethernet
+set [ find default-name=ether1 ] comment=SW-ACESSO
+set [ find default-name=ether4 ] comment=GERENCIA
+set [ find default-name=ether2 ] comment=CLIENTE
+/interface pppoe-client
+add add-default-route=yes allow=chap,mschap1,mschap2 disabled=no interface=ether1 name=link password=delcimir use-peer-dns=yes user=delcimir
+/interface wireless security-profiles
+set [ find default=yes ] supplicant-identity=MikroTik
+/ip pool
+add name=dhcp_pool0 ranges=192.168.0.2-192.168.0.254
+/ip dhcp-server
+add address-pool=dhcp_pool0 disabled=no interface=ether2 name=dhcp1
+/ip address
+add address=192.168.200.39/24 interface=ether4 network=192.168.200.0
+add address=192.168.0.1/24 interface=ether2 network=192.168.0.0
+/ip dhcp-client
+add disabled=no interface=ether1
+/ip dhcp-server network
+add address=192.168.0.0/24 gateway=192.168.0.1
+/ip firewall filter
+add action=accept chain=forward
+add action=accept chain=input src-address=189.89.66.2
+add action=accept chain=input src-address=172.16.1.0/30
+add action=accept chain=input protocol=icmp
+add action=drop chain=input
+/ip firewall nat
+add action=masquerade chain=srcnat out-interface=link src-address=192.168.0.0/24
+/ip route
+add distance=1 dst-address=189.89.66.2/32 gateway=192.168.200.1
+/system identity
+set name=RT-CLIENTE3

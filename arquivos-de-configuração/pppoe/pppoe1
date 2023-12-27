@@ -1,0 +1,47 @@
+/interface bridge
+add name=loopback0 protocol-mode=none
+/interface ethernet
+set [ find default-name=ether1 ] comment="SW CORE"
+set [ find default-name=ether2 ] comment=GERENCIA
+set [ find default-name=ether4 ] comment=LAN-PPPOE
+/interface vlan
+add interface=ether1 name=V-1.10 vlan-id=10
+/interface wireless security-profiles
+set [ find default=yes ] supplicant-identity=MikroTik
+/ip pool
+add name=pppoe ranges=10.100.100.0/24
+/ppp profile
+set *0 dns-server=8.8.8.8 local-address=10.100.100.1 remote-address=pppoe
+add change-tcp-mss=yes dns-server=8.8.8.8 name=10MBPS rate-limit=10M/10M
+/routing ospf instance
+set [ find default=yes ] router-id=10.255.255.2
+/interface pppoe-server server
+add authentication=chap,mschap1,mschap2 disabled=no interface=ether4 max-mru=1480 max-mtu=1480 one-session-per-host=yes service-name=rede1
+/ip address
+add address=192.168.200.30/24 interface=ether2 network=192.168.200.0
+add address=172.16.1.2/30 interface=V-1.10 network=172.16.1.0
+add address=10.255.255.2 interface=loopback0 network=10.255.255.2
+add address=10.100.100.1/24 disabled=yes interface=ether4 network=10.100.100.0
+/ip dhcp-client
+add disabled=no interface=ether1
+/ip dns
+set servers=8.8.8.8
+/ip firewall filter
+add action=accept chain=forward
+add action=accept chain=input src-address=189.89.66.2
+add action=accept chain=input src-address=172.16.1.0/30
+add action=accept chain=input src-address=10.100.100.0/24
+add action=accept chain=input protocol=icmp
+add action=drop chain=input
+/ip route
+add distance=1 dst-address=189.89.66.2/32 gateway=192.168.200.1
+/ppp secret
+add name=joao password=joao profile=10MBPS service=pppoe
+/routing ospf interface
+add disabled=yes
+/routing ospf network
+add area=backbone network=10.100.100.0/24
+add area=backbone network=172.16.1.0/30
+add area=backbone network=10.255.255.2/32
+/system identity
+set name=PPPoE1
