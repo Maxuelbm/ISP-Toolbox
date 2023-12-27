@@ -1,0 +1,30 @@
+# Realizar os seguintes passaos no Ubuntu 18.04 para instalação do PNETLab no método Bare Metal
+
+# 1 - logar como root:
+sudo -i
+
+# 2 - Configurar uma senha para o usuário root:
+passwd
+
+# 3 - Permitir o acesso do usário root atarvés do SSH:
+sed -i -e "s/.*PermitRootLogin .*/PermitRootLogin yes/" /etc/ssh/sshd_config
+
+# 4 - Reiniciar o serviço SSH:
+service sshd restart
+
+# 5 - Logar como root e excluir o usuário inicial criado durante a instalação do sistema:
+userdel [username do usuário]
+
+# 6 - Adicionar repositório no final do arquivo -> /etc/apt/sources.list
+deb [trusted=yes] http://repo.pnetlab.com ./
+
+# 7 - Tenha certeza de que o servidor tem saída para internet
+
+# 8 - Executar os comandos abaixo:
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt-get update
+apt-get purge netplan.io
+apt-get install pnetlab -y
+
+# 9 - Reinicie a máquina:
+Reboot
