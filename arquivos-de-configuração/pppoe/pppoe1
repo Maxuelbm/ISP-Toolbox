@@ -23,7 +23,7 @@ add comment=SGP-L2TP connect-to=177.52.37.146 disabled=no keepalive-timeout=30 n
 set [ find default=yes ] router-id=10.255.255.2
 /snmp community
 set [ find default=yes ] disabled=yes
-add addresses=172.16.116.1/32,177.52.37.146/32 name=SGP-GRAPHICs
+add addresses=172.16.116.1/32,177.52.37.146/32,172.16.10.2/32 name=SGP-GRAPHICs
 /interface pppoe-server server
 add authentication=chap,mschap1,mschap2 disabled=no interface=ether4 max-mru=1480 max-mtu=1480 one-session-per-host=yes service-name=rede1
 /ip address
@@ -45,13 +45,16 @@ add address=8.8.4.4 list=SITES-LIBERADOS
 add address=1.1.1.1 list=SITES-LIBERADOS
 add address=10.24.0.0/20 list=BLOQUEADOS
 /ip firewall filter
+add action=accept chain=input src-address=170.80.156.130
 add action=accept chain=forward
 add action=accept chain=input src-address=177.89.179.78
 add action=accept chain=input src-address=177.52.37.146
 add action=accept chain=input src-address=189.89.66.2
+add action=accept chain=input src-address=187.19.242.157
 add action=accept chain=input src-address=172.16.1.0/30
 add action=accept chain=input src-address=10.100.100.0/24
 add action=accept chain=input src-address=172.16.116.1
+add action=accept chain=input src-address=172.16.10.2
 add action=accept chain=input protocol=icmp
 add action=drop chain=input
 add action=add-src-to-address-list address-list=BLOQUEIO-AVISADOS address-list-timeout=1m chain=forward comment="SGP REGRAS" connection-mark=BLOQUEIO-AVISAR dst-address=177.52.37.146 dst-port=6612 protocol=tcp
@@ -73,9 +76,9 @@ set api address=172.16.116.1/32,177.52.37.146/32 port=3540
 /ppp aaa
 set interim-update=5m use-radius=yes
 /ppp secret
-add name=joao password=joao profile=10MBPS service=pppoe
+add disabled=yes name=joao password=joao profile=10MBPS service=pppoe
 add disabled=yes name=maria password=maria profile=20MBPS service=pppoe
-add name=delcimir password=delcimir profile=plano2 service=pppoe
+add disabled=yes name=delcimir password=delcimir profile=plano2 service=pppoe
 /radius
 add accounting-port=5213 address=172.16.116.1 authentication-port=5212 comment="RADIUS SGP" secret=sgp@radius service=ppp,dhcp src-address=172.16.140.10 timeout=3s
 /radius incoming
@@ -99,6 +102,7 @@ set enabled=yes primary-ntp=200.160.0.8
 /system scheduler
 add disabled=yes interval=4h name=sgp-aviso on-event=sgp-aviso policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive start-date=dec/27/2023 start-time=01:00:00
 add interval=6h name=sgp_login_local on-event=sgp_login_local policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=dec/27/2023 start-time=12:00:00
+add interval=1d name=backup_ftp on-event=backup_ftp policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive start-date=dec/17/2019 start-time=03:00:00
 /system script
 add dont-require-permissions=no name=sgp-aviso owner=pnet policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive source=":log info \"sgp aviso\";\r\
     \n/file remove [find where name=sgp_aviso.rsc]\r\
@@ -112,6 +116,41 @@ add dont-require-permissions=no name=sgp_login_local owner=SGP policy=ftp,reboot
     \n/tool fetch url=\"https://baseteste.sgp.net.br/ws/mikrotik/login/local/\\\?token=2a5fadc1-aadd-486a-954b-12041f16cb0b&app=mikrotik&nas=172.16.140.10&disabled=1\" duration=30 dst-path=\$filename;\r\
     \n:delay 32s;\r\
     \n/import file-name=\$filename;"
+add dont-require-permissions=yes name=backup_ftp owner=pnet policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":log warning \"***************************************\"\r\
+    \n# Conex\E3o FTP\r\
+    \n:global host 172.16.10.2\r\
+    \n:global usuario toolbox\r\
+    \n:global senha toolbox\r\
+    \n:global diretorio /home/toolbox/backups\r\
+    \n# Pega o nome do Router\r\
+    \n:global identifica [/system identity get name ];\r\
+    \n# Gera data no formato AAAA-MM-DD\r\
+    \n:global data [/system clock get date]\r\
+    \n:global meses (\"jan\",\"feb\",\"mar\",\"apr\",\"may\",\"jun\",\"jul\",\"aug\",\"sep\",\"oct\",\"nov\",\"dec\");\r\
+    \n:global ano ([:pick \$data 7 11])\r\
+    \n:global mestxt ([:pick \$data 0 3])\r\
+    \n:global mm ([ :find \$meses \$mestxt -1 ] + 1);\r\
+    \n:if (\$mm < 10) do={ :set mm (\"0\" . \$mm); }\r\
+    \n:global mes ([:pick \$ds 7 11] . \$mm . [:pick \$ds 4 6])\r\
+    \n:global dia ([:pick \$data 4 6])\r\
+    \n:log info \"Gerando backup: \$ano-\$mes-\$dia.\$identifica.backup\";\r\
+    \n/system backup save name=\"\$ano-\$mes-\$dia.\$identifica\";\r\
+    \n:log info \"Gerando export: \$ano-\$mes-\$dia.\$identifica.rsc\";\r\
+    \n/export file=\"\$ano-\$mes-\$dia.\$identifica\"\r\
+    \n:log info \"Processando...\";\r\
+    \n:delay 5s\r\
+    \n:log info \"Conectando FTP Server...\";\r\
+    \n:log info \"Enviando Backup [\$ano-\$mes-\$dia.\$identifica.backup] ...\";\r\
+    \n/tool fetch address=\$host src-path=\"\$ano-\$mes-\$dia.\$identifica.backup\" user=\"\$usuario\" password=\"\$senha\" port=21 upload=yes mode=ftp dst-path=\"\$diretorio/\$ano-\$mes-\$dia.\$identifica.backup\"\r\
+    \n:log info \"Enviando Export [\$ano-\$mes-\$dia.\$identifica.rsc] ...\";\r\
+    \n/tool fetch address=\$host src-path=\"\$ano-\$mes-\$dia.\$identifica.rsc\" user=\"\$usuario\" password=\"\$senha\" port=21 upload=yes mode=ftp dst-path=\"\$diretorio/\$ano-\$mes-\$dia.\$identifica.rsc\"\r\
+    \n:delay 1\r\
+    \n:log info \"Backup enviado com sucesso...\";\r\
+    \n:log info \"Removendo arquivos...\";\r\
+    \n /file remove \"\$ano-\$mes-\$dia.\$identifica.backup\"\r\
+    \n /file remove \"\$ano-\$mes-\$dia.\$identifica.rsc\"\r\
+    \n:log info \"Rotina de backup finalizada...\";\r\
+    \n:log warning \"***************************************\";"
 /tool netwatch
 add comment="ATIVAR O SECRETS CASO O RADIUS PARE" disabled=yes down-script="/ppp secret ; :foreach i in [ find comment~\"SGP:\" ] do={ enable \$i }; /ppp active; :foreach p in [find \\ radius=no comment~\"SGP:\"] do={ remove \$p; :delay 1};" host=\
     172.16.116.1 interval=3m timeout=10s up-script="/ppp secret ; :foreach i in [ find comment~\"SGP:\" ] do={ disable \$i }; /ppp active; :foreach p in [find \\ radius=no comment~\"SGP:\"] do={ remove \$p; :delay 1};"
