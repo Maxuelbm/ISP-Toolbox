@@ -1,0 +1,43 @@
+Configuração do Envio de Backup para o MEGA
+
+Primeiramente, foi realizada a instalação do cliente MEGA para Ubuntu 20.04 por meio do seguinte comando:
+
+wget https://mega.nz/linux/repo/xUbuntu_20.04/amd64/megacmd-xUbuntu_20.04_amd64.deb && sudo apt install "$PWD/megacmd-xUbuntu_20.04_amd64.deb"
+
+Em seguida, foi configurado um script para enviar os backups dos dispositivos MikroTik para o MEGA. Esse script identifica o arquivo correspondente à data atual e o envia. Em outras palavras, ele pega o backup gerado no dia atual e o transfere para o MEGA.
+
+Diretório: /usr/local/bin/backup-mega.sh
+Permissão de Execução: chmod +x /usr/local/bin/backup-mega.sh
+
+Script configurado:
+for i in $(find /home/toolbox/backups -name "*$(date +%Y-%m-%d)*" -printf "%f\n"); do echo $i; mega-put -q -c /home/toolbox/backups/$i backup/toolbox/$i; done
+
+Em seguida, foi configurado um arquivo de login no MEGA.
+
+Diretório: /usr/local/bin/mega-sync
+Permissão de Execução: chmod +x /usr/local/bin/mega-sync
+
+#!/bin/bash
+{
+  mega-login EMAIL SENHA RECOVERY_KEY
+} ||
+{
+  echo loged
+}
+
+mega-exec sync "$@"
+
+Por fim, foi estabelecida uma rotina para realizar o envio às 03h e para remover backups que não foram modificados nos últimos 2 dias no diretório de backups, evitando assim a acumulação desnecessária de arquivos.
+
+Diretório: /etc/cron.d/megaupload
+Permissão de Execução: chmod +x /etc/cron.d/megaupload
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+30 3 * * * root /usr/local/bin/backup-mega.sh &> /dev/null
+
+Por último, foi utilizado o comando a seguir para efetuar o login no MEGA:
+
+/usr/local/bin/mega-sync
+
+Essas configurações automatizadas foram projetadas para simplificar significativamente o procedimento de envio e organização de backups no MEGA, proporcionando uma gestão eficiente e descomplicada dos dados.
