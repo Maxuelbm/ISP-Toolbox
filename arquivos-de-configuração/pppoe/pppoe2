@@ -1,0 +1,115 @@
+/interface bridge
+add name=loopback0 protocol-mode=none
+/interface ethernet
+set [ find default-name=ether1 ] comment="SW CORE"
+set [ find default-name=ether2 ] comment=GERENCIA
+set [ find default-name=ether4 ] comment=LAN-PPPOE
+/interface wireless security-profiles
+set [ find default=yes ] supplicant-identity=MikroTik
+/ip pool
+add name=pppoe ranges=10.200.200.0/24
+/ppp profile
+set *0 dns-server=8.8.8.8 local-address=10.200.200.1 remote-address=pppoe
+add change-tcp-mss=yes dns-server=8.8.8.8 name=10MBPS rate-limit=10M/10M
+add change-tcp-mss=yes dns-server=8.8.8.8 name=20MBPS rate-limit=20M/20M
+add local-address=pppoe name=plano2 rate-limit=30M/30M
+add change-tcp-mss=yes dns-server=8.8.8.8 name=50MBPS rate-limit=50M/50M
+add name=VPN-SGP use-encryption=yes
+/interface l2tp-client
+add comment=SGP-L2TP connect-to=177.52.37.146 disabled=no keepalive-timeout=30 name=SGP-L2TP password=pD6f85xKdyE9wLnZPIWE profile=VPN-SGP user=toolbox02
+/routing ospf instance
+set [ find default=yes ] router-id=10.255.255.3
+/snmp community
+set [ find default=yes ] disabled=yes
+add addresses=172.16.116.1/32,177.52.37.146/32,172.16.10.2/32 name=SGP-GRAPHICs
+/interface pppoe-server server
+add authentication=chap,mschap1,mschap2 disabled=no interface=ether4 max-mru=1480 max-mtu=1480 one-session-per-host=yes service-name=red
+/ip address
+add address=172.16.1.6/30 interface=ether1 network=172.16.1.4
+add address=192.168.200.50/24 interface=ether2 network=192.168.200.0
+add address=10.200.200.1/24 interface=ether4 network=10.200.200.0
+add address=10.255.255.3 interface=loopback0 network=10.255.255.3
+/ip dhcp-client
+add disabled=no interface=ether1
+/ip firewall address-list
+add address=172.16.116.1 list=SITES-LIBERADOS
+add address=177.52.37.146 list=SITES-LIBERADOS
+add address=208.67.222.222 list=SITES-LIBERADOS
+add address=208.67.222.220 list=SITES-LIBERADOS
+add address=8.8.8.8 list=SITES-LIBERADOS
+add address=8.8.4.4 list=SITES-LIBERADOS
+add address=1.1.1.1 list=SITES-LIBERADOS
+add address=10.24.0.0/20 list=BLOQUEADOS
+/ip firewall filter
+add action=accept chain=forward
+add action=accept chain=input src-address=177.89.179.78
+add action=accept chain=input src-address=172.16.116.1
+add action=accept chain=input src-address=177.52.37.146
+add action=accept chain=input src-address=189.89.66.2
+add action=accept chain=input src-address=172.16.1.4/30
+add action=accept chain=input src-address=10.200.200.0/24
+add action=accept chain=input src-address=172.16.10.0/24
+add action=accept chain=input protocol=icmp
+add action=drop chain=input
+add action=add-src-to-address-list address-list=BLOQUEIO-AVISADOS address-list-timeout=1m chain=forward comment="SGP REGRAS" connection-mark=BLOQUEIO-AVISAR dst-address=177.52.37.146 dst-port=6612 protocol=tcp
+/ip firewall mangle
+add action=mark-connection chain=prerouting comment="SGP REGRAS" connection-state=new dst-port=80,443 new-connection-mark=BLOQUEIO-VERIFICAR passthrough=yes protocol=tcp src-address-list=BLOQUEIO-AVISAR
+add action=mark-connection chain=prerouting comment="SGP REGRAS" connection-mark=BLOQUEIO-VERIFICAR new-connection-mark=BLOQUEIO-AVISAR src-address-list=!BLOQUEIO-AVISADOS
+/ip firewall nat
+add action=masquerade chain=srcnat comment="SGP REGRAS" dst-address-list=SITES-LIBERADOS src-address-list=BLOQUEADOS
+add action=dst-nat chain=dstnat comment="SGP REGRAS" dst-address-list=!SITES-LIBERADOS dst-port=80,443 protocol=tcp src-address-list=BLOQUEADOS to-addresses=177.52.37.146 to-ports=6613
+add action=dst-nat chain=dstnat comment="SGP REGRAS" connection-mark=BLOQUEIO-AVISAR protocol=tcp to-addresses=177.52.37.146 to-ports=6612
+/ip firewall raw
+add action=notrack chain=output comment="SGP NAO FAZER NAT PARA O RADIUS" dst-address=172.16.116.1 dst-port=5212-5213,3799 protocol=udp
+add action=drop chain=prerouting comment="SGP BLOQUEIO" dst-address-list=!SITES-LIBERADOS src-address-list=BLOQUEADOS
+/ip route
+add distance=110 dst-address=177.52.37.146/32 gateway=172.16.1.5 pref-src=192.168.200.50 scope=20
+add distance=1 dst-address=187.19.242.157/32 gateway=192.168.200.1
+add distance=1 dst-address=189.89.66.2/32 gateway=192.168.200.1
+/ip service
+set api address=172.16.116.1/32,177.52.37.146/32 port=3540
+/ppp aaa
+set interim-update=5m use-radius=yes
+/ppp secret
+add disabled=yes name=jose password=jose profile=10MBPS service=pppoe
+add disabled=yes name=ana password=ana profile=20MBPS service=pppoe
+add disabled=yes name=felipe password=felipe profile=plano2 service=pppoe
+/radius
+add accounting-port=5213 address=172.16.116.1 authentication-port=5212 comment="RADIUS SGP" secret=sgp@radius service=ppp,dhcp src-address=172.16.140.11 timeout=3s
+/radius incoming
+set accept=yes
+/routing ospf network
+add area=backbone network=10.200.200.0/24
+add area=backbone network=172.16.1.4/30
+add area=backbone network=10.255.255.3/32
+/snmp
+set enabled=yes trap-community=SGP-GRAPHICs trap-version=2
+/system clock
+set time-zone-name=America/Recife
+/system identity
+set name=PPPoE2
+/system logging
+set 0 topics=info,!account
+/system ntp client
+set enabled=yes primary-ntp=200.160.0.8
+/system scheduler
+add disabled=yes interval=4h name=sgp-aviso on-event=sgp-aviso policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive start-date=jan/03/2024 start-time=01:00:00
+add interval=6h name=sgp_login_local on-event=sgp_login_local policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jan/03/2024 start-time=12:00:00
+/system script
+add dont-require-permissions=no name=sgp-aviso owner=pnet policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive source=":log info \"sgp aviso\";\r\
+    \n/file remove [find where name=sgp_aviso.rsc]\r\
+    \n/tool fetch url=\"https://baseteste.sgp.net.br/ws/mikrotik/aviso/pendencia/\\\?token=2a5fadc1-aadd-486a-954b-12041f16cb0b&app=mikrotik\" dst-path=sgp_aviso.rsc;\r\
+    \n:delay 30s\r\
+    \nimport file-name=sgp_aviso.rsc;\r\
+    \n:delay 10s;\r\
+    \n/ip firewall address-list set timeout=00:15:00 [/ip firewall address-list find list=BLOQUEIO-AVISAR]"
+add dont-require-permissions=no name=sgp_login_local owner=SGP policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":global filename \"sgp_login_local.txt\";\r\
+    \n/file remove [/file find name=\$filename]\r\
+    \n/tool fetch url=\"https://baseteste.sgp.net.br/ws/mikrotik/login/local/\\\?token=2a5fadc1-aadd-486a-954b-12041f16cb0b&app=mikrotik&nas=172.16.140.11&disabled=1\" duration=30 dst-path=\$filename;\r\
+    \n:delay 32s;\r\
+    \n/import file-name=\$filename;"
+/tool netwatch
+add comment="ATIVAR O SECRETS CASO O RADIUS PARE" disabled=yes down-script="/ppp secret ; :foreach i in [ find comment~\"SGP:\" ] do={ enable \$i }; /ppp active; :foreach p in [find \\ radius=no comment~\"SGP:\"] do={ remove \$p; :delay 1};" host=\
+    172.16.116.1 interval=3m timeout=10s up-script="/ppp secret ; :foreach i in [ find comment~\"SGP:\" ] do={ disable \$i }; /ppp active; :foreach p in [find \\ radius=no comment~\"SGP:\"] do={ remove \$p; :delay 1};"
+/user aaa
+set use-radius=yes
